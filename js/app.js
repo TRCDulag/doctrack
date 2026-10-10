@@ -127,7 +127,7 @@ const App = (() => {
     const roles = state.cfg.roles, role = state.user.role;
     const items = [['#/inbox', 'My office', Icons.inbox], ['#/track', 'Track', Icons.scan]];
     if (role !== roles.VIEWER) items.push(['#/new', 'New', Icons.plus], ['#/mine', 'Sent', Icons.folder]);
-    if (role === roles.ADMIN || role === roles.VIEWER) items.push(['#/reports', 'Reports', Icons.chart]);
+    if (role === roles.ADMIN) items.push(['#/reports', 'Reports', Icons.chart]);   // reporting sees all documents: Admin only
     if (role === roles.ADMIN) items.push(['#/admin', 'Admin', Icons.gear]);
     items.push(['#/account', 'Account', Icons.user]);
     return items;
@@ -173,6 +173,7 @@ const App = (() => {
     window.scrollTo(0, 0);
     try {
       if (name === 'doc') await Views.doc(view, decodeURIComponent(parts[1] || ''));
+      else if (name === 'track') await Views.track(view, decodeURIComponent(parts[1] || ''));
       else await (map[name] || Views.inbox)(view);
     } catch (e) {
       if (e.code === 'E-AUTH-04' || e.code === 'E-AUTH-07') return;

@@ -2,11 +2,11 @@
  * views.js: the screens. Each view is async (el, params) and draws into `el`.
  *
  *   inbox     documents with my office: to receive, and on hand to act on
- *   track     scan or type a tracking number
+ *   track     my office's documents; scan, or type a full or short tracking number (10-001, 001) or title words
  *   doc       one document: where it is, its route, and the Receive / Release / Print / Void actions
  *   newdoc    log a new document (originating section)
  *   mine      documents my office sent, with their status
- *   reports   all documents and turnaround figures (Admin, Viewer)
+ *   reports   all documents and turnaround figures (Admin only)
  *   account   my password, stored signature + PIN, label print settings
  *   admin     users and offices (Admin)
  */
@@ -23,6 +23,12 @@ const Views = (() => {
       '<div class="s"><span class="mono">' + esc(d.trk) + '</span> &middot; ' + esc(d.docType) + ' &middot; from ' + esc(d.originOffice) + '</div>' +
       '<div class="s">' + badge(d) + ' ' + esc(whereIs(d)) + '</div></div><div class="r">' + (right || '') + '</div></li>';
   }
+  /** Opens what was scanned or typed: a full tracking number opens the document, anything else searches on Track. */
+  function openRef(t) {
+    if (!t) return;
+    const full = QR.extractTrk(t);
+    go(full ? '#/doc/' + full : '#/track/' + encodeURIComponent(t));
+  }
   function wireItems(el) {
     el.querySelectorAll('[data-trk]').forEach(li => li.addEventListener('click', () => go('#/doc/' + li.dataset.trk)));
   }
@@ -31,7 +37,7 @@ const Views = (() => {
   async function inbox(el) {
     el.innerHTML = '<div class="page-head"><div><h1>With my office</h1><p class="muted">' + esc(App.user.office) + '</p></div>' +
       '<button class="btn big" data-scan>' + Icons.scan + ' Scan to receive</button></div><div data-body>' + loading + '</div>';
-    el.querySelector('[data-scan]').onclick = async () => { const t = await Scanner.open(); if (t) go('#/doc/' + t); };
+    el.querySelector('[data-scan]').onclick = async () => { openRef(await Scanner.open()); };
     if (isViewer()) el.querySelector('[data-scan]').classList.add('hidden');
     const r = await Api.call('inbox');
     const toReceive = r.docs.filter(d => d.status === 'In Transit');
@@ -49,19 +55,41 @@ const Views = (() => {
   }
 
   // ---------------- track ----------------
-  async function track(el) {
+  // Lists my office's documents by default. Typing searches only documents my office is involved in (Admin: all).
+  // A short number works: "10-001" (month-number) or "001". If the number matches exactly one document, it opens.
+  async function track(el, query) {
     el.innerHTML = '<h1>Track a document</h1><div class="card">' +
       '<button class="btn big block" data-scan>' + Icons.scan + ' Scan QR code</button>' +
-      '<p class="muted small" style="text-align:center;margin:12px 0">or type the tracking number</p>' +
-      '<div class="row"><input type="text" class="grow mono" placeholder="DT-2026-10-001" autocapitalize="characters" data-trk-in>' +
-      '<button class="btn" data-go>Open</button></div></div>';
-    el.querySelector('[data-scan]').onclick = async () => { const t = await Scanner.open(); if (t) go('#/doc/' + t); };
-    const open = () => {
-      const t = QR.extractTrk(el.querySelector('[data-trk-in]').value);
-      if (t) go('#/doc/' + t); else toast('Type the full tracking number, like DT-2026-10-001.', true);
+      '<p class="muted small" style="text-align:center;margin:12px 0">or type the tracking number (e.g. 10-001 or just 001) or words from the title</p>' +
+      '<div class="row"><input type="search" class="grow mono" placeholder="10-001" autocapitalize="characters" data-trk-in>' +
+      '<button class="btn" data-go>Find</button></div></div><div data-results>' + loading + '</div>';
+    const input = el.querySelector('[data-trk-in]'), out = el.querySelector('[data-results]');
+    el.querySelector('[data-scan]').onclick = async () => { openRef(await Scanner.open()); };
+
+    const show = async (q, autoOpen) => {
+      out.innerHTML = loading;
+      const r = await Api.call('find', { q });
+      if (autoOpen && r.byNumber && r.docs.length === 1) { go('#/doc/' + r.docs[0].trk); return; }
+      const title = !q ? 'Your office\'s documents' : 'Results for "' + esc(q) + '"';
+      const note = !q ? 'Documents your office sent or received, newest first.'
+        : (isAdmin() ? 'All documents.' : 'Only documents your office sent or received are searched.');
+      out.innerHTML = '<div class="card"><h2>' + title + ' <span class="muted small">(' + r.total + (r.total > r.docs.length ? ', newest ' + r.docs.length + ' shown' : '') + ')</span></h2>' +
+        '<p class="small muted" style="margin-top:-6px">' + note + '</p>' +
+        (r.docs.length ? '<ul class="list">' + r.docs.map(d => docItem(d, esc(d.loggedAt))).join('') + '</ul>'
+          : '<div class="empty">' + (q ? 'No document found. Check the number, or it may belong to offices other than yours.' : 'No documents yet.') + '</div>') + '</div>';
+      wireItems(out);
     };
-    el.querySelector('[data-go]').onclick = open;
-    el.querySelector('[data-trk-in]').addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+    const find = () => {
+      const v = input.value.trim();
+      const full = QR.extractTrk(v);
+      if (full) { go('#/doc/' + full); return; }
+      show(v, true).catch(error);
+    };
+    el.querySelector('[data-go]').onclick = find;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') find(); });
+    input.addEventListener('search', () => { if (!input.value) show('', false).catch(error); });   // the (x) clear button
+    if (query) input.value = query;
+    await show(query || '', !!query);
   }
 
   // ---------------- one document ----------------
@@ -317,7 +345,7 @@ const Views = (() => {
 
   // ---------------- reports (Admin, Viewer) ----------------
   async function reports(el) {
-    if (!isAdmin() && !isViewer()) { el.innerHTML = '<div class="notice warn">Reports are for Admin and Viewer accounts.</div>'; return; }
+    if (!isAdmin()) { el.innerHTML = '<div class="notice warn">Reports are for Admin accounts.</div>'; return; }
     const today = new Date(), first = new Date(today.getFullYear(), today.getMonth(), 1);
     const iso = x => new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     el.innerHTML = '<h1>Reports</h1><div class="card"><div class="grid2">' +

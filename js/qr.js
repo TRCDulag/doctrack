@@ -82,15 +82,15 @@ const Scanner = (() => {
           '<button class="btn secondary grow" data-photo>Take a photo of the QR</button>' +
           '<input type="file" accept="image/*" capture="environment" class="hidden" data-file></div>' +
           '<label class="f"><span>Or type the tracking number</span>' +
-          '<div class="row"><input type="text" class="grow mono" placeholder="DT-2026-10-001" autocapitalize="characters" data-typed>' +
+          '<div class="row"><input type="text" class="grow mono" placeholder="10-001" autocapitalize="characters" data-typed>' +
           '<button class="btn" data-go>Open</button></div></label>',
         onClose: val => { stop(); resolve(val || null); },
         onOpen: (b, closeFn) => {
           const finish = trk => { if (!done) { done = true; if (navigator.vibrate) navigator.vibrate(60); closeFn(trk); } };
           const msg = b.querySelector('[data-msg]');
           b.querySelector('[data-go]').onclick = () => {
-            const t = QR.extractTrk(b.querySelector('[data-typed]').value);
-            if (t) finish(t); else UI.toast('Type the full tracking number, like DT-2026-10-001.', true);
+            const v = b.querySelector('[data-typed]').value.trim();   // full number, or a short one like 10-001 (searched on Track)
+            if (v) finish(QR.extractTrk(v) || v); else UI.toast('Type the tracking number, like 10-001.', true);
           };
           b.querySelector('[data-typed]').addEventListener('keydown', e => { if (e.key === 'Enter') b.querySelector('[data-go]').click(); });
           const file = b.querySelector('[data-file]');
