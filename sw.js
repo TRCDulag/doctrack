@@ -3,9 +3,10 @@
  * when GitHub Pages is briefly down. Data is never cached: every request to the Apps Script
  * backend goes to the network.
  *
- * AFTER CHANGING ANY APP FILE, raise CACHE_VERSION (e.g. v1.0.1) so devices pick up the change.
+ * AFTER CHANGING ANY APP FILE, raise CACHE_VERSION (e.g. v1.1.3) so devices pick up the change,
+ * and set the same number in VERSION at the top of js/app.js (it shows on the login box).
  */
-const CACHE_VERSION = 'doctrack-v1.1.1';
+const CACHE_VERSION = 'doctrack-v1.1.2';
 const FILES = [
   './', 'index.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/api.js', 'js/ui.js', 'js/signature.js', 'js/qr.js', 'js/print.js', 'js/views.js', 'js/app.js',
