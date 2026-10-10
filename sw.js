@@ -5,7 +5,7 @@
  *
  * AFTER CHANGING ANY APP FILE, raise CACHE_VERSION (e.g. v1.0.1) so devices pick up the change.
  */
-const CACHE_VERSION = 'doctrack-v1.1.0';
+const CACHE_VERSION = 'doctrack-v1.1.1';
 const FILES = [
   './', 'index.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/api.js', 'js/ui.js', 'js/signature.js', 'js/qr.js', 'js/print.js', 'js/views.js', 'js/app.js',
@@ -16,7 +16,8 @@ const FILES = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's own cache, so a new version never installs old copies of files.
+  e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -31,7 +32,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })   // always ask GitHub whether the file changed (it otherwise keeps copies up to 10 minutes)
       .then(res => { const copy = res.clone(); caches.open(CACHE_VERSION).then(c => c.put(e.request, copy)); return res; })
       .catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
   );
