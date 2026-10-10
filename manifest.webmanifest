@@ -1,0 +1,16 @@
+{
+  "name": "TRC Dulag Document Tracking",
+  "short_name": "DocTrack",
+  "description": "Route, receive and track documents between offices of DOH TRC Dulag.",
+  "start_url": "./#/inbox",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1F2A45",
+  "theme_color": "#1F2A45",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
