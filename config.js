@@ -6,7 +6,7 @@
  * Images: replace the files in assets/ (keep the same names), or point these paths to new files.
  */
 window.APP_CONFIG = {
-  apiUrl: 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE',
+  apiUrl: 'https://script.google.com/macros/s/AKfycbzFUTfOOlUJJ7oadBOdbqSO3wjnZrfd9pdARCXngh4V9yJoL66zISo5hhSwkag4BHCq/exec',
 
   appName: 'Document Tracking',
   orgName: 'DOH Treatment and Rehabilitation Center - Dulag',
