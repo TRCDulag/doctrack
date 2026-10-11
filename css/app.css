@@ -225,3 +225,5 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(11,75,170,.2
 .rep .qr { position: absolute; right: 14mm; top: 36mm; text-align: center; font-size: 7pt; font-weight: 700; }
 .rep .qr svg { width: 18mm; height: 18mm; display: block; }
 .rep .foot { font-size: 7.5pt; color: #555; margin-top: 6mm; display: flex; justify-content: space-between; }
+.sig-preview { margin: 10px 0 14px; border: 2px dashed #9DB5AC; border-radius: 12px; background: #fff; padding: 12px; text-align: center; }
+.sig-preview img { display: block; max-width: 100%; max-height: 140px; margin: 0 auto 6px; }

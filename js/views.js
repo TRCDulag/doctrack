@@ -422,7 +422,13 @@ const Views = (() => {
     modal({
       title: 'Stored signature and PIN',
       body: '<p class="small">Sign the way you sign official documents. This stored signature is stamped only when you enter your PIN, and the record marks it "Stored signature (PIN)".</p>' +
-        '<div data-pad></div><div class="row" style="justify-content:flex-end"><button class="btn ghost" data-clear>Clear</button></div>' +
+        '<div class="choice"><label><input type="radio" name="src" value="draw" checked> Draw it</label>' +
+        '<label><input type="radio" name="src" value="upload"> Upload a picture</label></div>' +
+        '<div data-draw-box><div data-pad></div><div class="row" style="justify-content:flex-end"><button class="btn ghost" data-clear>Clear</button></div></div>' +
+        '<div class="hidden" data-upload-box><p class="small muted" style="margin-top:0">Sign in dark ink on plain white paper, then take a clear photo or scan (PNG or JPG). The app removes the white paper and trims the edges.</p>' +
+        '<input type="file" accept="image/png,image/jpeg" class="hidden" data-file>' +
+        '<button class="btn secondary block" data-pick>Choose a picture</button>' +
+        '<div class="sig-preview hidden" data-preview><img alt="Your signature as it will be stamped"><small class="muted">This is how your signature will look on receipts.</small></div></div>' +
         '<div class="grid2"><label class="f"><span>New PIN (4 to 6 digits)</span><input type="password" inputmode="numeric" maxlength="6" data-pin autocomplete="off"></label>' +
         '<label class="f"><span>Repeat PIN</span><input type="password" inputmode="numeric" maxlength="6" data-pin2 autocomplete="off"></label></div>' +
         '<label class="f"><span>Your password (to confirm it is you)</span><input type="password" data-pw autocomplete="current-password"></label>' +
@@ -431,16 +437,35 @@ const Views = (() => {
         '<div class="modal-foot"><button class="btn secondary" data-cancel>Cancel</button><button class="btn" data-ok>Save</button></div>',
       onOpen: (box, close) => {
         const pad = SignaturePad.mount(box.querySelector('[data-pad]'));
+        const file = box.querySelector('[data-file]'), preview = box.querySelector('[data-preview]');
+        let uploaded = '';
+        const source = () => box.querySelector('input[name=src]:checked').value;
+        box.querySelectorAll('input[name=src]').forEach(r => r.onchange = () => {
+          box.querySelector('[data-draw-box]').classList.toggle('hidden', source() !== 'draw');
+          box.querySelector('[data-upload-box]').classList.toggle('hidden', source() !== 'upload');
+        });
         box.querySelector('[data-clear]').onclick = () => pad.clear();
+        box.querySelector('[data-pick]').onclick = () => file.click();
+        file.onchange = async () => {
+          const f = file.files[0]; file.value = '';
+          if (!f) return;
+          try {
+            uploaded = await SignaturePad.fromImageFile(f);
+            preview.querySelector('img').src = uploaded; preview.classList.remove('hidden');
+            box.querySelector('[data-pick]').textContent = 'Choose a different picture';
+          } catch (err) { uploaded = ''; preview.classList.add('hidden'); toast(err.message, true); }
+        };
         box.querySelector('[data-cancel]').onclick = () => close();
         box.querySelector('[data-ok]').onclick = e => {
           const pin = box.querySelector('[data-pin]').value;
-          if (pad.isEmpty()) return toast('Please sign in the box first.', true);
+          const upload = source() === 'upload';
+          if (upload && !uploaded) return toast('Choose a picture of your signature first.', true);
+          if (!upload && pad.isEmpty()) return toast('Please sign in the box first.', true);
           if (!/^\d{4,6}$/.test(pin)) return toast('The PIN must be 4 to 6 digits.', true);
           if (pin !== box.querySelector('[data-pin2]').value) return toast('The two PINs do not match.', true);
           if (/^(\d)\1+$/.test(pin) || '0123456789'.indexOf(pin) >= 0) return toast('Choose a PIN that is harder to guess.', true);
           busy(e.currentTarget, async () => {
-            const r = await Api.call('setSignature', { signature: pad.toDataURL(), pin, password: box.querySelector('[data-pw]').value });
+            const r = await Api.call('setSignature', { signature: upload ? uploaded : pad.toDataURL(), pin, password: box.querySelector('[data-pw]').value });
             App.user = r.user; close(); toast('Stored signature and PIN saved.'); done();
           }).catch(error);
         };
