@@ -8,6 +8,14 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.2.1',
+    date: '2026-10-15',
+    changes: [
+      'The README page is now picture-based: a diagram of how a document moves, numbered steps with icons, and screenshots of each screen.'
+    ],
+    update: 'App files only. No Apps Script change.'
+  },
+  {
     version: '1.2.0',
     date: '2026-10-15',
     changes: [
