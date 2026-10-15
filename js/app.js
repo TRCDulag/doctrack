@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.1.3';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.2.0';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -59,6 +59,7 @@ const App = (() => {
       '<button type="button" data-show>Show</button></div></label>' +
       '<button class="btn big block" type="submit">Log in</button>' +
       '<button class="btn ghost block hidden" type="button" data-install>Install this app on this device</button>' +
+      '<a class="btn secondary block login-readme" href="readme.html" data-readme>README</a>' +
       '<div class="login-foot"><span>Forgot your password? Ask ICTU.</span><a href="#" data-check>Connection check</a></div>' +
       '<div class="login-ver">Version ' + VERSION + '</div>' +
       '</form></div>';
