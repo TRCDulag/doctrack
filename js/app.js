@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.4.0';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.4.1';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -33,7 +33,7 @@ const App = (() => {
     window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; const b = document.querySelector('[data-install]'); if (b) b.classList.remove('hidden'); });
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
     Api.onEvent(ev => {
-      if (ev === 'session-ended') { UI.toast('Your session ended. Please log in again.', true); showLogin(); }
+      if (ev === 'session-ended') { endSession(); UI.toast('Your session ended. Please log in again.', true); showLogin(); }
       if (ev === 'must-change') showChangePassword();
     });
     window.addEventListener('hashchange', route);
@@ -160,6 +160,8 @@ const App = (() => {
   }
 
   let badgeTimer = 0;
+  // Stops the background count check, so a dead session does not keep redrawing the login screen.
+  function endSession() { clearInterval(badgeTimer); badgeTimer = 0; state.cfg = null; state.user = null; }
   function refreshBadge() {
     if (!state.cfg) return;
     Api.call('inbox').then(r => setBadge(r.docs.filter(d => d.status === 'In Transit').length)).catch(() => {});

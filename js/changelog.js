@@ -8,6 +8,20 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.4.1',
+    date: '2026-10-19',
+    update: 'App files and Apps Script (Documents.gs; Admin.gs has a comment change only). ICTU must paste Documents.gs and deploy a new version. No Sheet change.',
+    changes: [
+      'After a session ends, the login screen no longer reloads every 2 minutes and wipes what you typed.',
+      'Reports: "Pending now" no longer counts voided documents.',
+      'Admin: the button is now just "Reset PIN", and it says the person must set up their signature and PIN again.',
+      'Admin: editing a user whose office is inactive keeps their office instead of picking another one.',
+      'A document can no longer be sent to an office that has only Viewer accounts, where no one could receive it.',
+      'Pressing "Log" again after a slow answer no longer makes a second tracking number for the same paper.',
+      'The routing status report fits the page better on phones.'
+    ]
+  },
+  {
     version: '1.4.0',
     date: '2026-10-19',
     changes: [

@@ -320,6 +320,8 @@ const Views = (() => {
       '<label class="f"><span>Remarks (optional)</span><textarea name="remarks" maxlength="1000"></textarea></label>' +
       '<button class="btn big block" type="submit">Log and get tracking number</button></form>';
     const form = el.querySelector('[data-form]');
+    // One id per filled-in form: if the first try times out and they press again, the server knows it is the same document.
+    const reqId = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     form.onsubmit = e => {
       e.preventDefault();
       const doc = Object.fromEntries(new FormData(form).entries());
@@ -327,7 +329,7 @@ const Views = (() => {
       if (!doc.docType) return need(form.docType, 'Choose the document type.');
       if (!doc.firstOffice) return need(form.firstOffice, 'Choose the first office to send it to.');
       busy(form.querySelector('[type=submit]'), async () => {
-        const r = await Api.call('logDoc', { doc });
+        const r = await Api.call('logDoc', { doc, reqId });
         el.innerHTML = '<div class="card" style="text-align:center"><div class="notice ok">Logged and sent to ' + esc(doc.firstOffice) + '.</div>' +
           '<div class="qr-preview">' + QR.svg(r.trk) + '</div><div class="big-trk">' + esc(r.trk) + '</div>' +
           '<p class="muted">Print the label on the document\'s first page, then bring the paper copy to ' + esc(doc.firstOffice) + '.</p>' +
@@ -541,7 +543,9 @@ const Views = (() => {
       body: '<form data-f autocomplete="off">' + (u ? '' : '<label class="f"><span>Username</span><input type="text" name="username" placeholder="e.g. jdelacruz" autocapitalize="off"><small>Letters, numbers, dots or underscores.</small></label>') +
         '<label class="f"><span>Full name</span><input type="text" name="name" value="' + esc(u ? u.name : '') + '"></label>' +
         '<label class="f"><span>Position</span><input type="text" name="position" value="' + esc(u ? u.position : '') + '"></label>' +
-        '<label class="f"><span>Office</span><select name="office">' + officeOptions(u ? u.office : '', '') + '</select></label>' +
+        '<label class="f"><span>Office</span><select name="office">' +
+        (u && App.cfg.offices.indexOf(u.office) < 0 ? '<option value="' + esc(u.office) + '" selected>' + esc(u.office) + ' (inactive)</option>' : '') +
+        officeOptions(u ? u.office : '', '') + '</select></label>' +
         '<label class="f"><span>Role</span><select name="role">' + [roles.USER, roles.VIEWER, roles.ADMIN].map(r => '<option' + (u && u.role === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>' +
         '<small>Section User: logs, receives and releases documents. Viewer: looks up and prints only. Admin: ICTU.</small></label>' +
         '<div class="modal-foot"><button type="button" class="btn secondary" data-cancel>Cancel</button><button class="btn" type="submit">' + (u ? 'Save' : 'Create user') + '</button></div></form>',
@@ -552,6 +556,7 @@ const Views = (() => {
           e.preventDefault();
           const user = Object.fromEntries(new FormData(f).entries());
           if (u) user.username = u.username;
+          if (u && user.office === u.office) delete user.office;   // unchanged, so an inactive office is not rejected
           busy(f.querySelector('[type=submit]'), async () => {
             if (u) { await Api.call('updateUser', { user }); close(); toast('Saved.'); done(); }
             else { const r = await Api.call('createUser', { user }); close(); done(); showTempPassword(r.username, r.tempPassword); }
@@ -576,7 +581,7 @@ const Views = (() => {
         '<div style="display:grid;gap:8px">' +
         '<button class="btn secondary" data-k="edit">Edit name, office or role</button>' +
         '<button class="btn secondary" data-k="password">Reset password (also unlocks)</button>' +
-        '<button class="btn secondary" data-k="pin">Reset PIN (keeps signature)</button>' +
+        '<button class="btn secondary" data-k="pin">Reset PIN</button>' +
         '<button class="btn secondary" data-k="signature">Clear stored signature and PIN</button>' +
         (u.status === 'Disabled' ? '<button class="btn" data-k="enable">Enable account</button>' : '<button class="btn danger" data-k="disable">Disable account</button>') +
         (u.status === 'Locked' ? '<button class="btn" data-k="enable">Unlock account</button>' : '') + '</div>',
@@ -584,7 +589,7 @@ const Views = (() => {
         box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
           const k = b.dataset.k; close();
           if (k === 'edit') return userForm(u, done);
-          const msgs = { password: 'Give ' + u.name + ' a new temporary password?', pin: 'Reset the PIN of ' + u.name + '? Only do this when they ask in person.',
+          const msgs = { password: 'Give ' + u.name + ' a new temporary password?', pin: 'Reset the PIN of ' + u.name + '? They will need to set up their signature and a new PIN again in Account. Only do this when they ask in person.',
             signature: 'Clear the stored signature and PIN of ' + u.name + '?', disable: 'Disable ' + u.name + '? They are signed out at once.' };
           act(k, msgs[k]);
         });
