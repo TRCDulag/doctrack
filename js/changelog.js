@@ -8,6 +8,23 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.4.0',
+    date: '2026-10-19',
+    changes: [
+      'A cleaner, calmer look on every screen. The colours, logos, steps and buttons you know are the same.',
+      'On a computer, your work now sits on one white page beside the menu, so it is easier to focus on.',
+      'Each document shows one clear status: yellow on the way, blue received, red returned, green completed, grey voided.',
+      'The route of a document now marks where it is "Now", and returned stops show in red.',
+      'If you miss a box or choose nothing, the message now shows right under that box, not only at the bottom of the screen.',
+      'While a list is loading you see grey placeholder rows, and empty lists tell you what will appear there.',
+      'If something cannot load, the screen says what went wrong, what to do, and gives a "Try again" button.',
+      'Reports: the filters fit on one row, and the totals and numbers line up neatly.',
+      'Bigger, darker small text, easier-to-tap buttons, and a clear outline for keyboard users.',
+      'Long document titles now show in full instead of being cut off.'
+    ],
+    update: 'App files only. No Apps Script or Sheet change.'
+  },
+  {
     version: '1.2.1',
     date: '2026-10-15',
     changes: [

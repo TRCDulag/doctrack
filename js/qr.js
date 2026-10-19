@@ -97,7 +97,7 @@ const Scanner = (() => {
           b.querySelector('[data-photo]').onclick = () => file.click();
           file.onchange = async () => {
             if (!file.files[0]) return;
-            msg.textContent = 'Reading the photo...';
+            msg.textContent = 'Reading the photo\u2026';
             const t = QR.extractTrk(await QR.decodeFile(file.files[0]));
             file.value = '';
             if (t) finish(t);

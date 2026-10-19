@@ -86,7 +86,7 @@ const Print = (() => {
     if (d.status === 'Received') pendingLine = 'Pending at <b>' + dt(d.currentOffice) + '</b>, received ' + dt(last.receivedAt) + ' by ' + dt(last.receivedBy) + ' (' + UI.minutes((r.printedAtMs - last.receivedAtMs) / 60000) + ' so far).';
 
     const html = '<div class="rep" style="position:relative">' +
-      '<img class="hdr" src="' + UI.esc(cfg.logos.headerBlack) + '" alt="">' +
+      '<img class="hdr" src="' + UI.esc(cfg.logos.headerBlack) + '" alt="" width="1600" height="179">' +
       '<h1>DOCUMENT ROUTING STATUS REPORT</h1>' +
       '<div class="sub">As of ' + dt(r.printedAt) + '</div>' +
       '<div class="qr">' + QR.svg(d.trk) + dt(d.trk) + '</div>' +

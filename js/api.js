@@ -50,7 +50,7 @@ const Api = (() => {
       if (e.name === 'AbortError') throw new ApiError('E-NET-02', 'The server took too long to answer. Please try again.');
       throw new ApiError('E-NET-01', navigator.onLine === false
         ? 'You are offline. Check the Wi-Fi or mobile data, then try again.'
-        : 'Cannot reach the server. Check the internet connection, then try again. If the internet is fine, ICTU: set the script deployment access to "Anyone".');
+        : 'Cannot reach the server. Check your internet connection, then try again. If the internet works, please tell ICTU.');
     } finally { clearTimeout(timer); }
 
     let data;

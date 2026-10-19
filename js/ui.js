@@ -7,12 +7,14 @@ const UI = (() => {
     return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function toast(msg, isError) {
+  /** A short message at the bottom of the screen. `detail` is a second, smaller line (the error code for ICTU). */
+  function toast(msg, isError, detail) {
     document.querySelectorAll('.toast').forEach(t => t.remove());
     const t = document.createElement('div');
     t.className = 'toast' + (isError ? ' err' : '');
     t.setAttribute('role', isError ? 'alert' : 'status');
     t.textContent = msg;
+    if (detail) { const sm = document.createElement('small'); sm.textContent = detail; t.appendChild(sm); }
     document.body.appendChild(t);
     setTimeout(() => t.remove(), isError ? 7000 : 3500);
   }
@@ -20,7 +22,34 @@ const UI = (() => {
   /** Shows an error from Api.call (or any error) as a red toast. */
   function error(e) {
     console.error(e);
-    toast(e && e.code ? e.toString() : (e && e.message) || String(e), true);
+    toast(e && e.code ? e.message : (e && e.message) || String(e), true, e && e.code ? 'Code for ICTU: ' + e.code + (e.ref ? ' / ' + e.ref : '') : '');
+  }
+
+  /** The same error drawn inside the part of the screen that failed, with a Try again button when `retry` is given. */
+  function errorBox(e, retry) {
+    const msg = e && e.message ? e.message : String(e);
+    return '<div class="err-box" role="alert"><span class="ic" aria-hidden="true">!</span><div><b>This could not be loaded.</b><p>' + esc(msg) + '</p>' +
+      (retry ? '<button class="btn secondary" data-retry>Try again</button>' : '') +
+      (e && e.code ? '<span class="code">Code for ICTU: ' + esc(e.code) + (e.ref ? ' / ' + esc(e.ref) : '') + '</span>' : '') + '</div></div>';
+  }
+
+  /**
+   * Marks a field that needs fixing: red edge and a one-line message right under it, plus the usual toast.
+   * `detail` is the small second line of the toast. The mark clears as soon as the field is changed. Returns undefined so callers can `return need(...)`.
+   */
+  function need(field, msg, detail) {
+    toast(msg, true, detail);
+    const wrap = field && (field.closest('.f') || field.parentElement);
+    if (!wrap) return;
+    wrap.classList.add('invalid');
+    let m = wrap.querySelector(':scope > .f-err');
+    if (!m) { m = document.createElement('span'); m.className = 'f-err'; wrap.appendChild(m); }
+    m.textContent = msg;
+    if (field.setAttribute) field.setAttribute('aria-invalid', 'true');
+    const clear = () => { wrap.classList.remove('invalid'); m.remove(); if (field.removeAttribute) field.removeAttribute('aria-invalid'); };
+    ['input', 'change', 'pointerdown'].forEach(ev => field.addEventListener(ev, clear, { once: true }));
+    wrap.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (field.focus && field.tagName !== 'DIV') field.focus({ preventScroll: true });
   }
 
   /**
@@ -67,10 +96,11 @@ const UI = (() => {
   /** Disables a button and shows a spinner while `fn` runs. */
   async function busy(btn, fn) {
     const html = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
+    const dark = btn.classList.contains('secondary') || btn.classList.contains('ghost') || btn.classList.contains('danger-text');
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner' + (dark ? ' dark' : '') + '"></span><span class="busy-txt">Please wait\u2026</span>';
     try { return await fn(); }
-    finally { btn.disabled = false; btn.innerHTML = html; }
+    finally { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = html; }
   }
 
   function minutes(m) {
@@ -86,9 +116,9 @@ const UI = (() => {
   function badge(doc) {
     const s = doc.status || '';
     const cls = { 'In Transit': 'transit', 'Received': 'received', 'Completed': 'completed', 'Voided': 'voided' }[s] || '';
-    let html = '<span class="badge ' + cls + '">' + esc(s) + '</span>';
-    if (s === 'In Transit' && /^Returned/.test(doc.lastMovement || '')) html += ' <span class="badge returned">Returned</span>';
-    return html;
+    // One status mark per row: a document sent back shows a single red "Returned, in transit" pill.
+    if (s === 'In Transit' && /^Returned/.test(doc.lastMovement || '')) return '<span class="badge returned">Returned, in transit</span>';
+    return '<span class="badge ' + cls + '">' + esc(s) + '</span>';
   }
 
   /** "In transit to Budget Section" / "With Accounting Section" / "Completed at ..." */
@@ -99,7 +129,7 @@ const UI = (() => {
     return 'Voided';
   }
 
-  const loading = '<div class="loading"><span class="spinner dark"></span></div>';
+  const loading = '<div class="card skel" role="status" aria-label="Loading">' + '<div class="skel-row"><i></i><i></i><i></i></div>'.repeat(3) + '</div>';
 
-  return { esc, toast, error, modal, confirmBox, busy, minutes, since, badge, whereIs, loading };
+  return { esc, toast, error, errorBox, need, modal, confirmBox, busy, minutes, since, badge, whereIs, loading };
 })();

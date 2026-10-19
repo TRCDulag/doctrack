@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.2.1';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.4.0';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -82,13 +82,17 @@ const App = (() => {
         await refreshConfig();
         if (!location.hash || location.hash === '#/' ) location.hash = '#/inbox';
         startShell();
-      }).catch(UI.error);
+      }).catch(err => {
+        // Wrong username or password: say so under the password box as well.
+        if (err.code === 'E-AUTH-01') return UI.need(f.password, err.message, 'Code for ICTU: ' + err.code);
+        UI.error(err);
+      });
     };
   }
 
   /** The office header over the dark login wallpaper, so the white version (see config.js). Phones only: CSS hides it on wide screens. */
   function loginHeader() {
-    return '<img class="login-header" src="' + UI.esc(cfgFile.logos.headerWhite) + '" alt="' + UI.esc(cfgFile.orgName) + '">';
+    return '<img class="login-header" src="' + UI.esc(cfgFile.logos.headerWhite) + '" alt="' + UI.esc(cfgFile.orgName) + '" width="1600" height="176" fetchpriority="high">';
   }
 
   /** First login (temporary password) or after an ICTU reset: the user must pick their own password. */
@@ -137,12 +141,13 @@ const App = (() => {
 
   function startShell() {
     const u = state.user;
-    root().innerHTML = '<div class="shell"><header class="topbar"><img class="seal" src="' + UI.esc(cfgFile.logos.main) + '" alt="">' +
-      '<img class="hdr" src="' + UI.esc(cfgFile.logos.headerWhite) + '" alt="' + UI.esc(cfgFile.orgName) + '">' +
+    root().innerHTML = '<a class="skip" href="#view" data-skip>Skip to content</a><div class="shell"><header class="topbar"><img class="seal" src="' + UI.esc(cfgFile.logos.main) + '" alt="" width="36" height="36">' +
+      '<img class="hdr" src="' + UI.esc(cfgFile.logos.headerWhite) + '" alt="' + UI.esc(cfgFile.orgName) + '" width="491" height="54">' +
       '<div><div class="t1">' + UI.esc(cfgFile.appName) + '</div><div class="t2">TRC Dulag</div></div><div class="spacer"></div>' +
       '<div class="who"><div>' + UI.esc(u.name) + '</div><div>' + UI.esc(u.office) + '</div></div></header>' +
-      '<nav class="nav">' + menu().map(m => '<a href="' + m[0] + '">' + m[2] + '<span>' + m[1] + '</span>' + (m[0] === '#/inbox' ? '<span class="dot hidden" data-badge></span>' : '') + '</a>').join('') + '</nav>' +
-      '<main class="main" id="view"></main></div>';
+      '<nav class="nav" aria-label="Main menu">' + menu().map(m => '<a href="' + m[0] + '">' + m[2] + '<span>' + m[1] + '</span>' + (m[0] === '#/inbox' ? '<span class="dot hidden" data-badge></span>' : '') + '</a>').join('') + '</nav>' +
+      '<main class="main" id="view" tabindex="-1"></main></div>';
+    root().querySelector('[data-skip]').onclick = e => { e.preventDefault(); document.getElementById('view').focus(); };
     if (!location.hash || location.hash === '#/') location.hash = '#/inbox'; else route();
     // Keep the "to receive" count on the menu fresh (every 2 minutes while the app is open and visible).
     clearInterval(badgeTimer);
@@ -170,7 +175,11 @@ const App = (() => {
     if (!view || !state.cfg) return;
     const parts = location.hash.replace(/^#\/?/, '').split('/');
     const name = parts[0] || 'inbox';
-    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#/' + (name === 'doc' ? 'track' : name)));
+    document.querySelectorAll('.nav a').forEach(a => {
+      const on = a.getAttribute('href') === '#/' + (name === 'doc' ? 'track' : name);
+      a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
     const map = { inbox: Views.inbox, track: Views.track, new: Views.newdoc, mine: Views.mine, reports: Views.reports, account: Views.account, admin: Views.admin };
     window.scrollTo(0, 0);
     try {
@@ -179,8 +188,7 @@ const App = (() => {
       else await (map[name] || Views.inbox)(view);
     } catch (e) {
       if (e.code === 'E-AUTH-04' || e.code === 'E-AUTH-07') return;
-      view.innerHTML = '<div class="notice err">' + UI.esc(e.code ? e.toString() : e.message || e) + '</div>' +
-        '<button class="btn secondary" data-retry>Try again</button>';
+      view.innerHTML = UI.errorBox(e, true);
       view.querySelector('[data-retry]').onclick = route;
       console.error(e);
     }
