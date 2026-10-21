@@ -8,6 +8,16 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.1',
+    date: '2026-10-21',
+    update: 'App files and Apps Script (Admin.gs only). ICTU must paste Admin.gs and deploy a new version. No Sheet change.',
+    changes: [
+      'Admin: the Office list in New user now also shows every section and division from the masterlist that is not an office yet.',
+      'Admin: choosing one of those adds it as a new office when you save the user, so the office matches the masterlist.',
+      'Section names from the masterlist are written neatly (for example "Office of the TRC Chief"), and a name used under two divisions shows its division.'
+    ]
+  },
+  {
     version: '1.5.0',
     date: '2026-10-21',
     update: 'App files and Apps Script (Config.gs, Admin.gs, Api.gs). ICTU must paste the three script files and deploy a new version. New optional Sheet tab "Masterlist" (HR\'s employee masterlist, pasted as is).',

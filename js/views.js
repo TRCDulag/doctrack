@@ -565,29 +565,44 @@ const Views = (() => {
           if (!u && !user.office) return need(f.office, 'Choose the office.');
           busy(f.querySelector('[type=submit]'), async () => {
             if (u) { await Api.call('updateUser', { user }); close(); toast('Saved.'); done(); }
-            else { const r = await Api.call('createUser', { user }); close(); done(); showTempPassword(r.username, r.tempPassword); }
+            else {
+              const isNew = App.cfg.offices.indexOf(user.office) < 0;
+              if (isNew) await Api.call('saveOffice', { office: user.office, code: officeCode(user.office), active: true });
+              const r = await Api.call('createUser', { user });
+              if (isNew) await App.refreshConfig();
+              close(); done(); showTempPassword(r.username, r.tempPassword);
+            }
           }).catch(error);
         };
       }
     });
   }
 
+  /** "Health Information Management Section" -> "HIMS" (short code for a new office). */
+  const officeCode = name => name.replace(/\(.*\)/g, ' ').split(/[\s\/]+/).filter(w => w && !/^(of|the|and|for|in|on|to)$/i.test(w))
+    .map(w => w.charAt(0).toUpperCase()).join('').slice(0, 6);
+
   /** Fills the New user form from the Masterlist tab: name, designation, office and a suggested username. */
   async function employeePicker(box, f) {
     const input = box.querySelector('[data-emp]'), list = box.querySelector('#emp-list'), note = box.querySelector('[data-emp-note]');
-    let emps = [];
-    try { const r = await Api.call('listEmployees'); emps = r.employees;
+    let emps = [], r;
+    try { r = await Api.call('listEmployees'); emps = r.employees;
       if (r.missing || !emps.length) { input.placeholder = 'No masterlist yet'; note.textContent = 'To pick from the masterlist, paste it into a tab named "Masterlist" in the Google Sheet.'; return; }
     } catch (e) { input.placeholder = 'Masterlist not available'; note.textContent = e.message; return; }
     const label = e => e.surname + ', ' + e.first + ' \u00b7 ' + (e.section || 'No section') + (e.hasAccount ? ' (has an account)' : '');
     list.innerHTML = emps.map(e => '<option value="' + esc(label(e)) + '">').join('');
+    // Masterlist sections that are not offices yet: offered in the Office list, and created when the user is saved.
+    const fresh = (r.sections || []).filter(x => App.cfg.offices.indexOf(x) < 0);
+    if (fresh.length) f.office.insertAdjacentHTML('beforeend', '<optgroup label="From the masterlist (new office, added when you save)">' +
+      fresh.map(x => '<option value="' + esc(x) + '">' + esc(x) + '</option>').join('') + '</optgroup>');
     input.disabled = false; input.placeholder = 'Type a surname\u2026';
     input.oninput = () => {
       const e = emps.filter(x => label(x) === input.value)[0];
       if (!e) return;
       f.username.value = e.username; f.name.value = e.name; f.position.value = e.position;
-      f.office.value = e.office || '';
-      note.innerHTML = esc(e.section ? 'Masterlist section: ' + e.section + '. ' : '') + (e.office ? 'Office filled in.' : '<b>Choose the office below</b>, because no office has that exact name.') +
+      f.office.value = e.office || e.section || '';
+      note.innerHTML = esc(e.section ? 'Masterlist section: ' + e.section + '. ' : '') +
+        (e.office ? 'Office filled in.' : e.section ? 'This section is not an office yet. It will be added as a new office when you save.' : '<b>Choose the office below.</b>') +
         (e.hasAccount ? ' <b>This person may already have an account.</b>' : '');
     };
   }
