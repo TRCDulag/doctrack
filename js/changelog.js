@@ -8,6 +8,16 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.0',
+    date: '2026-10-21',
+    update: 'App files and Apps Script (Config.gs, Admin.gs, Api.gs). ICTU must paste the three script files and deploy a new version. New optional Sheet tab "Masterlist" (HR\'s employee masterlist, pasted as is).',
+    changes: [
+      'Admin: when adding a user, you can pick the person from the employee masterlist. Their name, designation and office fill in for you.',
+      'Admin: a username is suggested for each person, like TRCD_DelacruzKA (family name plus first and second initials). You can still change it.',
+      'Admin: the form says when a person in the masterlist may already have an account.'
+    ]
+  },
+  {
     version: '1.4.1',
     date: '2026-10-19',
     update: 'App files and Apps Script (Documents.gs; Admin.gs has a comment change only). ICTU must paste Documents.gs and deploy a new version. No Sheet change.',

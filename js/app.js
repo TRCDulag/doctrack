@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.4.1';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.5.0';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;

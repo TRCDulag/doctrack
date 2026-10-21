@@ -540,10 +540,14 @@ const Views = (() => {
     const roles = App.cfg.roles;
     modal({
       title: u ? 'Edit ' + u.username : 'New user',
-      body: '<form data-f autocomplete="off">' + (u ? '' : '<label class="f"><span>Username</span><input type="text" name="username" placeholder="e.g. jdelacruz" autocapitalize="off"><small>Letters, numbers, dots or underscores.</small></label>') +
+      body: '<form data-f autocomplete="off">' + (u ? '' : '<label class="f"><span>Pick from the employee masterlist (optional)</span>' +
+        '<input type="search" list="emp-list" data-emp placeholder="Loading the masterlist\u2026" disabled><datalist id="emp-list"></datalist>' +
+        '<small data-emp-note>Type a surname, then choose the person. You can still change any detail below.</small></label>' +
+        '<label class="f"><span>Username</span><input type="text" name="username" placeholder="e.g. TRCD_DelacruzJM" autocapitalize="off"><small>Letters, numbers, dots or underscores. Not case sensitive when logging in.</small></label>') +
         '<label class="f"><span>Full name</span><input type="text" name="name" value="' + esc(u ? u.name : '') + '"></label>' +
-        '<label class="f"><span>Position</span><input type="text" name="position" value="' + esc(u ? u.position : '') + '"></label>' +
-        '<label class="f"><span>Office</span><select name="office">' +
+        '<label class="f"><span>Designation</span><input type="text" name="position" value="' + esc(u ? u.position : '') + '"></label>' +
+        '<label class="f"><span>Office (section or division)</span><select name="office">' +
+        (u ? '' : '<option value="">Choose\u2026</option>') +
         (u && App.cfg.offices.indexOf(u.office) < 0 ? '<option value="' + esc(u.office) + '" selected>' + esc(u.office) + ' (inactive)</option>' : '') +
         officeOptions(u ? u.office : '', '') + '</select></label>' +
         '<label class="f"><span>Role</span><select name="role">' + [roles.USER, roles.VIEWER, roles.ADMIN].map(r => '<option' + (u && u.role === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>' +
@@ -552,11 +556,13 @@ const Views = (() => {
       onOpen: (box, close) => {
         box.querySelector('[data-cancel]').onclick = () => close();
         const f = box.querySelector('[data-f]');
+        if (!u) employeePicker(box, f);
         f.onsubmit = e => {
           e.preventDefault();
           const user = Object.fromEntries(new FormData(f).entries());
           if (u) user.username = u.username;
           if (u && user.office === u.office) delete user.office;   // unchanged, so an inactive office is not rejected
+          if (!u && !user.office) return need(f.office, 'Choose the office.');
           busy(f.querySelector('[type=submit]'), async () => {
             if (u) { await Api.call('updateUser', { user }); close(); toast('Saved.'); done(); }
             else { const r = await Api.call('createUser', { user }); close(); done(); showTempPassword(r.username, r.tempPassword); }
@@ -564,6 +570,26 @@ const Views = (() => {
         };
       }
     });
+  }
+
+  /** Fills the New user form from the Masterlist tab: name, designation, office and a suggested username. */
+  async function employeePicker(box, f) {
+    const input = box.querySelector('[data-emp]'), list = box.querySelector('#emp-list'), note = box.querySelector('[data-emp-note]');
+    let emps = [];
+    try { const r = await Api.call('listEmployees'); emps = r.employees;
+      if (r.missing || !emps.length) { input.placeholder = 'No masterlist yet'; note.textContent = 'To pick from the masterlist, paste it into a tab named "Masterlist" in the Google Sheet.'; return; }
+    } catch (e) { input.placeholder = 'Masterlist not available'; note.textContent = e.message; return; }
+    const label = e => e.surname + ', ' + e.first + ' \u00b7 ' + (e.section || 'No section') + (e.hasAccount ? ' (has an account)' : '');
+    list.innerHTML = emps.map(e => '<option value="' + esc(label(e)) + '">').join('');
+    input.disabled = false; input.placeholder = 'Type a surname\u2026';
+    input.oninput = () => {
+      const e = emps.filter(x => label(x) === input.value)[0];
+      if (!e) return;
+      f.username.value = e.username; f.name.value = e.name; f.position.value = e.position;
+      f.office.value = e.office || '';
+      note.innerHTML = esc(e.section ? 'Masterlist section: ' + e.section + '. ' : '') + (e.office ? 'Office filled in.' : '<b>Choose the office below</b>, because no office has that exact name.') +
+        (e.hasAccount ? ' <b>This person may already have an account.</b>' : '');
+    };
   }
 
   function manageUser(u, done) {
