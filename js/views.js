@@ -34,6 +34,26 @@ const Views = (() => {
     const full = QR.extractTrk(t);
     go(full ? '#/doc/' + full : '#/track/' + encodeURIComponent(t));
   }
+  // The last answer for each list screen, kept while the app is open (1.5.2). Coming back to a screen shows
+  // that at once, then the fresh answer replaces it. An answer that arrives after the user moved on is not drawn.
+  let recent = {};
+  async function fresh(key, action, body, draw) {
+    const here = location.hash;
+    const had = recent[key];
+    if (had) draw(had);
+    let r;
+    try { r = await Api.call(action, body); }
+    catch (e) {
+      if (!had) throw e;
+      if (!/^E-AUTH/.test(e.code)) error(e);   // keep showing the last list, and say why it did not update
+      return had;
+    }
+    recent[key] = r;
+    if (location.hash === here) draw(r);
+    return r;
+  }
+  const forget = () => { recent = {}; };
+
   function wireItems(el) {
     // Rows are real links (Ctrl+click, middle-click and Enter all work); this only keeps a plain click inside the app.
     el.querySelectorAll('a[data-trk]').forEach(a => a.addEventListener('click', e => {
@@ -48,7 +68,9 @@ const Views = (() => {
       '<button class="btn big" data-scan>' + Icons.scan + ' Scan to receive</button></div><div data-body>' + loading + '</div>';
     el.querySelector('[data-scan]').onclick = async () => { openRef(await Scanner.open()); };
     if (isViewer()) el.querySelector('[data-scan]').classList.add('hidden');
-    const r = await Api.call('inbox');
+    await fresh('inbox', 'inbox', {}, r => drawInbox(el, r));
+  }
+  function drawInbox(el, r) {
     const toReceive = r.docs.filter(d => d.status === 'In Transit');
     const onHand = r.docs.filter(d => d.status === 'Received');
     App.setBadge(toReceive.length);
@@ -77,8 +99,12 @@ const Views = (() => {
 
     const show = async (q, autoOpen) => {
       out.innerHTML = loading;
+      if (!q) return fresh('track', 'find', { q }, draw.bind(null, q));
       const r = await Api.call('find', { q });
       if (autoOpen && r.byNumber && r.docs.length === 1) { go('#/doc/' + r.docs[0].trk); return; }
+      draw(q, r);
+    };
+    const draw = (q, r) => {
       const title = !q ? 'Your office\'s documents' : 'Results for "' + esc(q) + '"';
       const note = !q ? 'Documents your office sent or received, newest first.'
         : (isAdmin() ? 'All documents.' : 'Only documents your office sent or received are searched.');
@@ -346,7 +372,7 @@ const Views = (() => {
     el.innerHTML = '<div class="page-head"><div><h1>Sent by my office</h1><p class="muted">Where each document from ' + esc(App.user.office) + ' is now.</p></div>' +
       '<select data-filter style="max-width:220px"><option value="">All</option><option value="open">Still moving</option>' +
       '<option>Completed</option><option>Voided</option></select></div><div class="card" data-body>' + loading + '</div>';
-    const r = await Api.call('myOffice', { days: 180 });
+    let r;
     const draw = () => {
       const f = el.querySelector('[data-filter]').value;
       const docs = r.docs.filter(d => !f || (f === 'open' ? (d.status === 'In Transit' || d.status === 'Received') : d.status === f));
@@ -355,7 +381,8 @@ const Views = (() => {
         : emptyBox('No documents here', f ? 'Try another choice in the list above.' : 'Documents your office logs will show here.');
       wireItems(el);
     };
-    el.querySelector('[data-filter]').onchange = draw; draw();
+    el.querySelector('[data-filter]').onchange = draw;
+    await fresh('mine', 'myOffice', { days: 180 }, x => { r = x; draw(); });
   }
 
   // ---------------- reports (Admin, Viewer) ----------------
@@ -638,5 +665,5 @@ const Views = (() => {
     });
   }
 
-  return { inbox, track, doc, newdoc, mine, reports, account, admin, signatureSetup };
+  return { inbox, track, doc, newdoc, mine, reports, account, admin, signatureSetup, forget };
 })();

@@ -8,6 +8,17 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.2',
+    date: '2026-10-22',
+    update: 'App files and Apps Script (Data.gs, Util.gs, Api.gs, Auth.gs, Admin.gs, Setup.gs). ICTU must paste the six script files and deploy a new version. No Sheet change.',
+    changes: [
+      'Faster: the script reads each Sheet tab once per request instead of several times, and keeps the office and list names on hand for a few minutes.',
+      'Faster login: the app gets everything it needs in one trip instead of two.',
+      'My office, Track and Sent show their last list at once when you come back to them, then update.',
+      'Note for ICTU: a change typed by hand in the Offices or Lists tab shows in the app within 5 minutes. Changes made in the Admin screen show at once.'
+    ]
+  },
+  {
     version: '1.5.1',
     date: '2026-10-21',
     update: 'App files and Apps Script (Admin.gs only). ICTU must paste Admin.gs and deploy a new version. No Sheet change.',

@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.5.1';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.5.2';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -79,7 +79,8 @@ const App = (() => {
         Api.setToken(res.token);
         state.user = res.user;
         if (res.user.mustChange) return showChangePassword(f.password.value);
-        await refreshConfig();
+        if (res.config) { state.cfg = res.config; state.user = res.config.user; }   // 1.5.2: sent with the login
+        else await refreshConfig();
         if (!location.hash || location.hash === '#/' ) location.hash = '#/inbox';
         startShell();
       }).catch(err => {
@@ -123,7 +124,7 @@ const App = (() => {
 
   async function logout() {
     try { await Api.call('logout'); } catch (e) { /* signing out anyway */ }
-    Api.setToken(null); state.user = null; state.cfg = null; clearInterval(badgeTimer);
+    Api.setToken(null); state.user = null; state.cfg = null; clearInterval(badgeTimer); Views.forget();
     location.hash = '';
     showLogin();
   }
@@ -152,7 +153,7 @@ const App = (() => {
     // Keep the "to receive" count on the menu fresh (every 2 minutes while the app is open and visible).
     clearInterval(badgeTimer);
     badgeTimer = setInterval(() => { if (document.visibilityState === 'visible') refreshBadge(); }, 120000);
-    refreshBadge();
+    if (!/^#\/inbox/.test(location.hash)) refreshBadge();   // My office sets the count itself
     if (u.role !== state.cfg.roles.VIEWER && !u.hasSignature && navigator.maxTouchPoints === 0 && !Api.store.get('doctrack.sigPrompted.' + u.username)) {
       Api.store.set('doctrack.sigPrompted.' + u.username, '1');
       UI.toast('Tip: set up a stored signature and PIN in Account, to sign on this desktop.');
@@ -161,7 +162,7 @@ const App = (() => {
 
   let badgeTimer = 0;
   // Stops the background count check, so a dead session does not keep redrawing the login screen.
-  function endSession() { clearInterval(badgeTimer); badgeTimer = 0; state.cfg = null; state.user = null; }
+  function endSession() { clearInterval(badgeTimer); badgeTimer = 0; state.cfg = null; state.user = null; Views.forget(); }
   function refreshBadge() {
     if (!state.cfg) return;
     Api.call('inbox').then(r => setBadge(r.docs.filter(d => d.status === 'In Transit').length)).catch(() => {});
