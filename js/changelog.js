@@ -8,6 +8,16 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.4',
+    date: '2026-10-23',
+    update: 'App files and Apps Script (Config.gs, Documents.gs, Setup.gs). ICTU must paste the three script files and deploy a new version. A new Sheet tab "Wrong Office Scans" is made by itself the first time it is needed (or run setup once to make it now).',
+    changes: [
+      'When a section scans or opens a document that was not routed to it, the document now shows a yellow note to the offices involved: which office scanned it, who, and when. The note is also kept in the Audit Trail.',
+      'Scanning or opening a document that was not routed to your office now says so plainly ("Document not routed to your office") and asks you to return the document to the person who delivered it, instead of "Tracking number not found".',
+      'README and the launch presentation explain what happens when the wrong office scans a document.'
+    ]
+  },
+  {
     version: '1.5.3',
     date: '2026-10-22',
     update: 'App files only. No Apps Script or Sheet change.',

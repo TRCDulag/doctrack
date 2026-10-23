@@ -278,6 +278,8 @@ a.item { color: inherit; text-decoration: none; }
 .err-box b { display: block; color: var(--navy); margin-bottom: 2px; }
 .err-box p { margin: 0 0 10px; color: var(--ink-2); }
 .err-box .code { display: block; margin-top: 8px; font-size: .8125rem; color: var(--muted); }
+.err-box.warn { border-color: #EBD9A6; background: #FFF8E1; }
+.err-box.warn .ic { background: var(--amber); }
 
 .big-trk { font-size: 1.8rem; font-weight: 700; color: var(--navy); letter-spacing: .02em; }
 .qr-preview svg { width: 140px; height: 140px; }

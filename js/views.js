@@ -131,7 +131,18 @@ const Views = (() => {
   // ---------------- one document ----------------
   async function doc(el, trk) {
     el.innerHTML = loading;
-    const r = await Api.call('getDoc', { trk });
+    let r;
+    try { r = await Api.call('getDoc', { trk }); }
+    catch (e) {
+      // Not found, or not routed to this office (the server answers the same, so nothing about the document is shown).
+      if (e.code !== 'E-DOC-01') throw e;
+      el.innerHTML = '<div class="err-box warn" role="alert"><span class="ic" aria-hidden="true">!</span><div><b>Document not routed to your office</b>' +
+        '<p>' + esc(trk) + ' has not been forwarded to your office and cannot be received here. Kindly return the document to the person who delivered it.</p>' +
+        '<p>If you believe this is an error, please verify the tracking number or contact ICTU.</p>' +
+        '<button class="btn secondary" data-back>Back to My office</button><span class="code">Code for ICTU: ' + esc(e.code) + '</span></div></div>';
+      el.querySelector('[data-back]').onclick = () => go('#/inbox');
+      return;
+    }
     const d = r.doc, stops = r.stops, last = stops[stops.length - 1];
     const open = d.status === 'In Transit' || d.status === 'Received';
     let heroNote = '';
@@ -161,6 +172,8 @@ const Views = (() => {
       '<div class="page-head"><div><div class="trk-line">' + esc(d.trk) + '</div><h1>' + esc(d.title) + '</h1></div><div>' + badge(d) + '</div></div>' +
       '<div class="status-hero s-' + (d.status === 'In Transit' && /^Returned/.test(d.lastMovement || '') ? 'returned' : esc(d.status.split(' ').pop().toLowerCase())) + '"><span class="ic">' + (d.status === 'In Transit' ? Icons.send : d.status === 'Received' ? Icons.inbox : d.status === 'Completed' ? CHECK : Icons.folder) + '</span><div class="grow"><div class="where">' + esc(whereIs(d)) + '</div><div class="small muted">' + esc(heroNote) + '</div></div></div>' +
       (actions.length ? '<div class="doc-actions">' + actions.join('') + '</div>' : '') +
+      (r.wrongScans && r.wrongScans.length ? '<div class="notice warn wrong-scans"><b>Scanned by an office it was not routed to</b>' +
+        r.wrongScans.map(w => '<div>' + esc(w.office) + ' (' + esc(w.by) + '), ' + esc(w.at) + '. ' + esc(w.expected) + ' at that time.</div>').join('') + '</div>' : '') +
       '<div class="grid2"><div class="card"><h2>Route so far</h2><ul class="timeline">' + timeline + '</ul></div>' +
       '<div><div class="card"><h2>Details</h2><dl class="kv">' +
       '<dt>Type</dt><dd>' + esc(d.docType) + '</dd>' + (d.pages ? '<dt>Pages</dt><dd>' + esc(d.pages) + '</dd>' : '') +
