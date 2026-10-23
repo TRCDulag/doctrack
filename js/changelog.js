@@ -8,6 +8,14 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.3',
+    date: '2026-10-22',
+    update: 'App files only. No Apps Script or Sheet change.',
+    changes: [
+      'README: new part "When the internet is down": use mobile data, write the tracking number by hand when there is no printer, and use a paper routing slip when there is no internet at all, writing the real time in Remarks when you send it on.'
+    ]
+  },
+  {
     version: '1.5.2',
     date: '2026-10-22',
     update: 'App files and Apps Script (Data.gs, Util.gs, Api.gs, Auth.gs, Admin.gs, Setup.gs). ICTU must paste the six script files and deploy a new version. No Sheet change.',
