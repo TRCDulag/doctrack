@@ -8,6 +8,15 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.6',
+    date: '2026-11-08',
+    update: 'App files only. No Apps Script change.',
+    changes: [
+      'New "Need help?" button at the bottom right with the ICT helper, the same one as in the TRC HRMIS. It has FAQs about Document Tracking, a link to file an ICT Job Order, Contact Info for ICTU, and About the App.',
+      'A message sent from Contact Info goes to ICTU as a job order request, so you get a JO number.',
+    ],
+  },
+  {
     version: '1.5.5',
     date: '2026-10-31',
     update: 'App files only. No Apps Script change.',
