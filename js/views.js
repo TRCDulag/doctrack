@@ -21,7 +21,7 @@ const Views = (() => {
   const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
   const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
   const count = (n, hot) => '<span class="count' + (hot && n ? ' hot' : '') + '">' + n + '</span>';
-  const emptyBox = (title, note) => '<div class="empty">' + Icons.inbox + '<b>' + title + '</b><span>' + note + '</span></div>';
+  const emptyBox = (title, note) => '<p class="empty">' + title + (note ? ' <span>' + note + '</span>' : '') + '</p>';
 
   function docItem(d, right) {
     return '<li><a class="item" href="#/doc/' + encodeURIComponent(d.trk) + '" data-trk="' + esc(d.trk) + '"><div class="main-txt"><div class="t">' + esc(d.title) + '</div>' +
@@ -74,14 +74,11 @@ const Views = (() => {
     const toReceive = r.docs.filter(d => d.status === 'In Transit');
     const onHand = r.docs.filter(d => d.status === 'Received');
     App.setBadge(toReceive.length);
-    const sec = (title, note, docs, right, emptyTitle, empty, hot) => '<div class="card"><h2>' + title + ' ' + count(docs.length, hot) + '</h2>' +
-      '<p class="small muted lead">' + note + '</p>' +
-      (docs.length ? '<ul class="list">' + docs.map(d => docItem(d, right(d))).join('') + '</ul>' : emptyBox(emptyTitle, empty)) + '</div>';
+    const sec = (title, docs, right, emptyTitle, hot) => '<div class="card"><h2>' + title + ' ' + count(docs.length, hot) + '</h2>' +
+      (docs.length ? '<ul class="list">' + docs.map(d => docItem(d, right(d))).join('') + '</ul>' : emptyBox(emptyTitle)) + '</div>';
     el.querySelector('[data-body]').innerHTML =
-      sec('To receive', 'Sent to your office. Sign for each one when the paper copy arrives.', toReceive,
-        d => 'sent ' + esc(since(d.statusSinceMs)) + ' ago', 'Nothing to receive right now', 'New documents sent to your office will show here.', true) +
-      sec('On hand', 'Received by your office. When done, forward it, return it, or mark it completed.', onHand,
-        d => 'held ' + esc(since(d.statusSinceMs)), 'Nothing on hand right now', 'Documents your office signs for will show here until you send them on.');
+      sec('To receive', toReceive, d => 'sent ' + esc(since(d.statusSinceMs)) + ' ago', 'No documents to receive.', true) +
+      sec('On hand', onHand, d => 'held ' + esc(since(d.statusSinceMs)), 'No documents on hand.');
     wireItems(el);
   }
 
@@ -91,7 +88,7 @@ const Views = (() => {
   async function track(el, query) {
     el.innerHTML = '<h1>Track a document</h1><div class="card">' +
       '<button class="btn big block" data-scan>' + Icons.scan + ' Scan QR code</button>' +
-      '<p class="muted small" style="text-align:center;margin:12px 0">or type the tracking number (e.g. 10-001 or just 001) or words from the title</p>' +
+      '<p class="muted small" style="text-align:center;margin:12px 0">or type the number (10-001 or 001) or words from the title</p>' +
       '<div class="row"><input type="search" class="grow mono" placeholder="10-001" autocapitalize="characters" data-trk-in>' +
       '<button class="btn" data-go>Find</button></div></div><div data-results>' + loading + '</div>';
     const input = el.querySelector('[data-trk-in]'), out = el.querySelector('[data-results]');
@@ -106,13 +103,12 @@ const Views = (() => {
     };
     const draw = (q, r) => {
       const title = !q ? 'Your office\'s documents' : 'Results for "' + esc(q) + '"';
-      const note = !q ? 'Documents your office sent or received, newest first.'
-        : (isAdmin() ? 'All documents.' : 'Only documents your office sent or received are searched.');
+      const note = !q ? '' : (isAdmin() ? '' : 'Only documents your office sent or received are searched.');
       out.innerHTML = '<div class="card"><h2>' + title + ' ' + count(r.total) + (r.total > r.docs.length ? ' <span class="muted small">newest ' + r.docs.length + ' shown</span>' : '') + '</h2>' +
-        '<p class="small muted" style="margin-top:-6px">' + note + '</p>' +
+        (note ? '<p class="small muted" style="margin-top:-6px">' + note + '</p>' : '') +
         (r.docs.length ? '<ul class="list">' + r.docs.map(d => docItem(d, esc(d.loggedAt))).join('') + '</ul>'
-          : (q ? emptyBox('No document found', 'Check the number, or try words from the title. It may also belong to offices other than yours.')
-            : emptyBox('No documents yet', 'Documents your office sends or receives will show here.'))) + '</div>';
+          : (q ? emptyBox('No document found.', 'Check the number, or try words from the title.')
+            : emptyBox('No documents yet.'))) + '</div>';
       wireItems(out);
     };
     const find = () => {
@@ -205,11 +201,11 @@ const Views = (() => {
         '<div class="notice info">Confirm the paper copy is in your hands, complete with its attachments, before you sign.</div>' +
         '<div class="choice"><label><input type="radio" name="m" value="live"' + (live ? ' checked' : '') + '> Sign now</label>' +
         '<label><input type="radio" name="m" value="stored"' + (live ? '' : ' checked') + (u.hasSignature ? '' : ' disabled') + '> Stored signature + PIN</label></div>' +
-        (u.hasSignature ? '' : '<p class="small muted" style="margin-top:-6px">To use a stored signature on a desktop, set it up once in My Account.</p>') +
+        (u.hasSignature ? '' : '<p class="small muted" style="margin-top:-6px">No stored signature yet. Set it up in Account.</p>') +
         '<div data-live-box><div data-pad></div><div class="row" style="justify-content:flex-end"><button class="btn ghost" data-clear>Clear</button></div></div>' +
         '<label class="f hidden" data-pin-box><span>Your PIN</span><input type="password" inputmode="numeric" autocomplete="off" maxlength="6" data-pin></label>' +
         (mates.length ? '<label class="f"><span>Receiving for someone else? (optional)</span><select data-for><option value="">No, I am the receiver</option>' +
-          mates.map(m => '<option>' + esc(m.name) + '</option>').join('') + '</select><small>You still sign as yourself; the record shows "received for".</small></label>' : '') +
+          mates.map(m => '<option>' + esc(m.name) + '</option>').join('') + '</select><small>You sign as yourself. The record shows "received for".</small></label>' : '') +
         '<div class="modal-foot"><button class="btn secondary" data-cancel>Cancel</button><button class="btn" data-ok>Confirm receipt</button></div>',
       onOpen: (box, close) => {
         const pad = SignaturePad.mount(box.querySelector('[data-pad]'));
@@ -347,7 +343,7 @@ const Views = (() => {
   async function newdoc(el) {
     if (isViewer()) { el.innerHTML = '<div class="notice warn">Viewer accounts cannot log documents.</div>'; return; }
     const types = (App.cfg.lists['Document Type'] || []).map(t => '<option>' + esc(t.label) + '</option>').join('');
-    el.innerHTML = '<h1>Log a document</h1><p class="muted">Enter the details and the <b>first</b> office only. Each office that receives it chooses where it goes next.</p>' +
+    el.innerHTML = '<h1>Log a document</h1><p class="muted">Choose only the <b>first</b> office. Each office picks the next one.</p>' +
       '<form class="card" data-form autocomplete="off">' +
       '<label class="f"><span>Title / subject</span><input type="text" name="title" maxlength="300" required>' +
       '<small>Keep it general. Do not include patient or client names, diagnoses or case numbers.</small></label>' +
@@ -382,7 +378,7 @@ const Views = (() => {
 
   // ---------------- my office's documents ----------------
   async function mine(el) {
-    el.innerHTML = '<div class="page-head"><div><h1>Sent by my office</h1><p class="muted">Where each document from ' + esc(App.user.office) + ' is now.</p></div>' +
+    el.innerHTML = '<div class="page-head"><div><h1>Sent by my office</h1><p class="muted">' + esc(App.user.office) + '</p></div>' +
       '<select data-filter style="max-width:220px"><option value="">All</option><option value="open">Still moving</option>' +
       '<option>Completed</option><option>Voided</option></select></div><div class="card" data-body>' + loading + '</div>';
     let r;
@@ -391,7 +387,7 @@ const Views = (() => {
       const docs = r.docs.filter(d => !f || (f === 'open' ? (d.status === 'In Transit' || d.status === 'Received') : d.status === f));
       el.querySelector('[data-body]').innerHTML = docs.length ? '<ul class="list">' + docs.map(d => docItem(d,
         (d.status === 'In Transit' || d.status === 'Received') ? esc(since(d.statusSinceMs)) + ' there' : esc(d.statusSince))).join('') + '</ul>'
-        : emptyBox('No documents here', f ? 'Try another choice in the list above.' : 'Documents your office logs will show here.');
+        : emptyBox(f ? 'No documents with this status.' : 'No documents sent yet.');
       wireItems(el);
     };
     el.querySelector('[data-filter]').onchange = draw;
@@ -403,7 +399,7 @@ const Views = (() => {
     if (!isAdmin()) { el.innerHTML = '<div class="notice warn">Reports are for Admin accounts.</div>'; return; }
     const today = new Date(), first = new Date(today.getFullYear(), today.getMonth(), 1);
     const iso = x => new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    el.innerHTML = '<div class="page-head"><div><h1>Reports</h1><p class="muted">How documents are moving across offices.</p></div></div><div class="card"><div class="filters">' +
+    el.innerHTML = '<div class="page-head"><div><h1>Reports</h1></div></div><div class="card"><div class="filters">' +
       '<label class="f"><span>From</span><input type="date" data-from value="' + iso(first) + '"></label>' +
       '<label class="f"><span>To</span><input type="date" data-to value="' + iso(today) + '"></label>' +
       '<label class="f"><span>Status</span><select data-status><option value="">All</option><option>In Transit</option><option>Received</option><option>Completed</option><option>Voided</option></select></label>' +
@@ -425,7 +421,7 @@ const Views = (() => {
         '</tbody></table></div></div>' +
         (s.reasons.length ? '<div class="card"><h2>Return reasons</h2><table class="tbl"><tbody>' + s.reasons.map(x => '<tr><td>' + esc(x.reason) + '</td><td class="num" style="width:60px">' + x.count + '</td></tr>').join('') + '</tbody></table></div>' : '') +
         '<div class="card"><h2>Documents ' + count(list.total) + (list.total > 500 ? ' <span class="muted small">newest 500 shown</span>' : '') + '</h2>' +
-        (list.docs.length ? '<ul class="list">' + list.docs.map(d => docItem(d, esc(d.loggedAt))).join('') + '</ul>' : emptyBox('No documents match these filters', 'Try a wider date range, or choose All.')) + '</div>';
+        (list.docs.length ? '<ul class="list">' + list.docs.map(d => docItem(d, esc(d.loggedAt))).join('') + '</ul>' : emptyBox('No documents match these filters.', 'Try a wider date range, or choose All.')) + '</div>';
       wireItems(out);
     };
     el.querySelector('[data-run]').onclick = e => busy(e.currentTarget, run).catch(error);
@@ -480,7 +476,7 @@ const Views = (() => {
         '<div class="choice"><label><input type="radio" name="src" value="draw" checked> Draw it</label>' +
         '<label><input type="radio" name="src" value="upload"> Upload a picture</label></div>' +
         '<div data-draw-box><div data-pad></div><div class="row" style="justify-content:flex-end"><button class="btn ghost" data-clear>Clear</button></div></div>' +
-        '<div class="hidden" data-upload-box><p class="small muted" style="margin-top:0">Sign in dark ink on plain white paper, then take a clear photo or scan (PNG or JPG). The app removes the white paper and trims the edges.</p>' +
+        '<div class="hidden" data-upload-box><p class="small muted" style="margin-top:0">Sign in dark ink on plain white paper, then take a clear photo or scan (PNG or JPG). The white background is removed for you.</p>' +
         '<input type="file" accept="image/png,image/jpeg" class="hidden" data-file>' +
         '<button class="btn secondary block" data-pick>Choose a picture</button>' +
         '<div class="sig-preview hidden" data-preview><small class="muted">This is how your signature will look on receipts.</small></div></div>' +

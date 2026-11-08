@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.5.4';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.5.5';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -59,7 +59,7 @@ const App = (() => {
       '<button type="button" data-show>Show</button></div></label>' +
       '<button class="btn big block" type="submit">Log in</button>' +
       '<button class="btn ghost block hidden" type="button" data-install>Install this app on this device</button>' +
-      '<a class="btn secondary block login-readme" href="readme.html" data-readme>README</a>' +
+      '<a class="btn secondary block login-readme" href="readme.html" data-readme>User guide</a>' +
       '<div class="login-foot"><span>Forgot your password? Ask ICTU.</span><a href="#" data-check>Connection check</a></div>' +
       '<div class="login-ver">Version ' + VERSION + '</div>' +
       '</form></div>';
@@ -156,7 +156,7 @@ const App = (() => {
     if (!/^#\/inbox/.test(location.hash)) refreshBadge();   // My office sets the count itself
     if (u.role !== state.cfg.roles.VIEWER && !u.hasSignature && navigator.maxTouchPoints === 0 && !Api.store.get('doctrack.sigPrompted.' + u.username)) {
       Api.store.set('doctrack.sigPrompted.' + u.username, '1');
-      UI.toast('Tip: set up a stored signature and PIN in Account, to sign on this desktop.');
+      UI.toast('To sign on this computer, set up a stored signature and PIN in Account.');
     }
   }
 

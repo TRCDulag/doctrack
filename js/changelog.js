@@ -8,6 +8,16 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.5',
+    date: '2026-10-31',
+    update: 'App files only. No Apps Script change.',
+    changes: [
+      'The user guide has a new part, "Add the app to your device", with steps for office computers, Android phones and iPhones.',
+      'The README button on the login page is now called "User guide".',
+      'Shorter, plainer wording on My office, Track, Sent, Reports and the receive dialog. Empty lists now show one plain line.',
+    ],
+  },
+  {
     version: '1.5.4',
     date: '2026-10-23',
     update: 'App files and Apps Script (Config.gs, Documents.gs, Setup.gs). ICTU must paste the three script files and deploy a new version. A new Sheet tab "Wrong Office Scans" is made by itself the first time it is needed (or run setup once to make it now).',
