@@ -8,6 +8,14 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.7',
+    date: '2026-11-11',
+    update: 'App files only. No Apps Script change.',
+    changes: [
+      'The ICT helper is smaller. The names of the four round buttons now sit on the left of each circle, so no name covers another button.',
+    ],
+  },
+  {
     version: '1.5.6',
     date: '2026-11-08',
     update: 'App files only. No Apps Script change.',
