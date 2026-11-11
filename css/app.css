@@ -523,6 +523,12 @@ kbd { border: 1px solid #B8CBC3; border-bottom-width: 2px; border-radius: 5px; p
 .hd-mail input, .hd-mail select, .hd-mail textarea { width: 100%; padding: 8px; border: 1px solid #b9c5c0; border-radius: 6px; font: inherit; }
 .hd-mail .actions { margin-top: 10px; }
 .hd-mail .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.hd-shot-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.hd-shot-btns .btn { width: auto; border-color: var(--line); }
+.hd-shot .small { margin: 6px 0 0; }
+.hd-shot-prev { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; }
+.hd-shot-prev[hidden] { display: none; }
+.hd-shot-prev img { max-width: 220px; max-height: 140px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .hd-err { color: var(--red); margin: 6px 0 0; font-size: 14px; }
 .hd-err:empty { display: none; }
 

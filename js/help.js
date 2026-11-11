@@ -4,6 +4,8 @@
  *
  * Messages from Contact Info go to the ICT Inventory and PMS app as a job order request
  * (its public submitJO action, the same one its "Request ICT help" page uses), so the sender gets a JO number.
+ * A screenshot can go with it (PMS 1.8.4 or newer): taken of this page, pasted with Ctrl+V, or picked from the device.
+ * It is made smaller here (JPEG, at most 1600 px wide) and sent as a data: URL in "screenshot".
  * Looks are in css/app.css under "Need help?".
  */
 const Help = (() => {
@@ -49,6 +51,92 @@ const Help = (() => {
       '<h3>Made by</h3><p>Information and Communications Technology Unit (ICTU), DOH TRC Dulag.</p>';
   }
 
+  // Taking a picture of the page works on computers (Chrome, Edge, Firefox) over https. Phones use their own screenshot.
+  function canCapture() {
+    const md = navigator.mediaDevices;
+    return !!(window.isSecureContext && md && md.getDisplayMedia) && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  function shotTip() {
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
+      return 'Take a screenshot with your phone first (on most phones, press Power and Volume down together), then tap Choose a picture.';
+    return (canCapture() ? 'When the browser asks, choose this tab. ' : '') + 'You can also press Ctrl+V here to paste a picture you copied.';
+  }
+
+  let shot = null;   // { data: 'data:image/jpeg;base64,...', kb }
+
+  // Any picture (file, pasted, or a video frame) is drawn on a canvas and saved as a smaller JPEG.
+  function shrink(src, w, h) {
+    const max = 1600, k = Math.min(1, max / w);
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(src, 0, 0, c.width, c.height);
+    let q = .85, data = c.toDataURL('image/jpeg', q);
+    while (data.length > 2.6e6 && q > .4) { q -= .15; data = c.toDataURL('image/jpeg', q); }
+    return data;
+  }
+  function setShot(data, f) {
+    const err = f.querySelector('#hd-mail-err');
+    if (data && data.length > 2.6e6) { err.textContent = 'That picture is too big. Please choose a smaller one.'; return; }
+    shot = data ? { data, kb: Math.round(data.length * .75 / 1024) } : null;
+    const prev = f.querySelector('#hd-shot-prev');
+    prev.hidden = !shot;
+    f.querySelector('#hd-shot-img').src = shot ? shot.data : '';
+    if (shot) err.textContent = '';
+  }
+  function fromBlob(blob, f) {
+    const err = f.querySelector('#hd-mail-err');
+    if (!blob || !/^image\/(png|jpeg|webp|gif|bmp)$/.test(blob.type)) { err.textContent = 'Please choose a picture (PNG or JPG).'; return; }
+    if (blob.size > 25e6) { err.textContent = 'That picture is too big. Please choose a smaller one.'; return; }
+    const url = URL.createObjectURL(blob), im = new Image();
+    im.onload = () => { setShot(shrink(im, im.naturalWidth, im.naturalHeight), f); URL.revokeObjectURL(url); };
+    im.onerror = () => { err.textContent = 'That picture could not be opened. Please try another one.'; URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+  // Takes one picture of the screen the person picks (this tab), with the help window out of the way.
+  async function capture(f, dlg) {
+    const err = f.querySelector('#hd-mail-err');
+    err.textContent = '';
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'browser' }, audio: false,
+        preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude' });
+    } catch (x) {
+      if (x && x.name !== 'NotAllowedError') err.textContent = 'The screenshot could not be taken. You can press Print Screen, then Ctrl+V here.';
+      return;
+    }
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.srcObject = stream;
+    if (dlg.close) dlg.close();
+    try {
+      await v.play();
+      await new Promise(r => setTimeout(r, 450));   // lets the page repaint without the help window
+      setShot(shrink(v, v.videoWidth, v.videoHeight), f);
+    } catch (x) {
+      err.textContent = 'The screenshot could not be taken. You can press Print Screen, then Ctrl+V here.';
+    } finally {
+      stream.getTracks().forEach(t => t.stop());
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+      const prev = f.querySelector('#hd-shot-prev');
+      if (!prev.hidden) prev.scrollIntoView({ block: 'nearest' });
+    }
+  }
+  function wireShot(dlg) {
+    const f = dlg.querySelector('#hd-mail'), file = f.querySelector('#hd-shot-file');
+    const take = f.querySelector('#hd-shot-take');
+    if (take) take.addEventListener('click', () => capture(f, dlg));
+    f.querySelector('#hd-shot-pick').addEventListener('click', () => file.click());
+    file.addEventListener('change', () => { if (file.files[0]) fromBlob(file.files[0], f); file.value = ''; });
+    f.querySelector('#hd-shot-del').addEventListener('click', () => setShot(null, f));
+    dlg.addEventListener('paste', e => {
+      const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(i => i.kind === 'file' && /^image\//.test(i.type));
+      if (!it) return;
+      e.preventDefault();
+      fromBlob(it.getAsFile(), f);
+    });
+  }
+
   function contact() {
     return '<dl class="hd-info"><dt>Unit</dt><dd>Information and Communications Technology Unit (ICTU), DOH TRC Dulag</dd>' +
       '<dt>Email</dt><dd><a href="mailto:' + ICTU.email + '">' + ICTU.email + '</a></dd>' +
@@ -63,9 +151,18 @@ const Help = (() => {
       '<label for="hd-office">Office or section</label><input id="hd-office" name="office" maxlength="150">' +
       '<label for="hd-phone">Contact number or local <span class="muted">(so ICTU can call you back)</span></label><input id="hd-phone" name="contact" maxlength="80" inputmode="tel">' +
       '<label for="hd-msg">Message</label><textarea id="hd-msg" name="message" rows="4" maxlength="1500" placeholder="What happened? Which screen were you on?"></textarea>' +
+      '<label>Screenshot <span class="muted">(optional)</span></label>' +
+      '<div class="hd-shot" id="hd-shot">' +
+      '<div class="hd-shot-btns">' +
+      (canCapture() ? '<button type="button" class="btn ghost" id="hd-shot-take">Take a screenshot of this page</button>' : '') +
+      '<button type="button" class="btn ghost" id="hd-shot-pick">Choose a picture</button>' +
+      '<input type="file" id="hd-shot-file" accept="image/png,image/jpeg,image/webp" hidden></div>' +
+      '<p class="muted small" id="hd-shot-tip">' + shotTip() + '</p>' +
+      '<div class="hd-shot-prev" id="hd-shot-prev" hidden><img id="hd-shot-img" alt="The screenshot that will be sent">' +
+      '<button type="button" class="btn ghost" id="hd-shot-del">Remove</button></div></div>' +
       '<p class="hd-err" id="hd-mail-err" role="alert"></p><p class="hd-ok" id="hd-mail-ok" role="status"></p>' +
       '<div class="actions"><button class="btn" id="hd-send">Send to ICT</button></div>' +
-      '<p class="muted small">Your message goes to the ICT Unit as a job order request, so you get a JO number. Never put passwords or PINs in a message.</p></form>';
+      '<p class="muted small">Your message goes to the ICT Unit as a job order request, so you get a JO number. Never put passwords or PINs in a message. A screenshot is seen only by ICTU.</p></form>';
   }
 
   const dialog = (id, kind, title, body) => '<dialog class="hd-dlg" id="' + id + '" aria-labelledby="' + id + '-t"><div class="hd-dlg-head c-' + kind + '"><span class="hd-dot">' + ico(kind) + '</span>' +
@@ -157,6 +254,7 @@ const Help = (() => {
     });
 
     hd.querySelector('#hd-mail').addEventListener('submit', send);
+    wireShot(hd.querySelector('#hd-contact'));
   }
 
   // A logged-in person's name and office are filled in for them.
@@ -180,13 +278,16 @@ const Help = (() => {
       lastName: f.last.value.trim(), firstName: f.first.value.trim(), unit: f.office.value.trim(), contact: f.contact.value.trim(),
       mode: 'Online', others: 'Document Tracking help menu: ' + topic, equipment: APP_TOPICS.indexOf(topic) >= 0 ? 'Document Tracking' : '',
       description: f.message.value.trim().slice(0, 1400) + ' (Document Tracking ' + (App.VERSION) + ', screen ' + where + ')', urgent: 'No' } };
+    if (shot) body.screenshot = { name: 'screenshot.jpg', type: 'image/jpeg', data: shot.data };
     btn.disabled = true; btn.textContent = 'Sending…';
     try {
       const res = await fetch(PMS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || 'Not sent.');
-      ok.textContent = 'Sent. Your job order number is ' + j.jo + '. ICTU will get back to you.';
+      ok.textContent = 'Sent. Your job order number is ' + j.jo + '. ICTU will get back to you.' +
+        (shot && j.screenshot !== true ? ' The screenshot did not go through, so please describe what you saw, or show it to ICTU.' : '');
       f.message.value = '';
+      setShot(null, f);
     } catch (x) {
       err.textContent = (x instanceof SyntaxError || x instanceof TypeError ? 'No connection to the ICT app.' : x.message) +
         ' Please try again, or call ' + ICTU.phone + '.';
