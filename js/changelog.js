@@ -8,6 +8,17 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.9',
+    date: '2026-11-11',
+    update: 'App files only. No Apps Script change.',
+    changes: [
+      'The app opens faster. It now opens from the copy saved on your phone or computer, instead of asking GitHub for every file each time.',
+      'After you log in once, the app shows your office right away and checks your account in the background, so it waits on the server only once when it opens.',
+      'The QR reader loads only when you scan, so the first screen loads less.',
+      'When a new version is out, the app switches to it on its own the next time it opens.',
+    ],
+  },
+  {
     version: '1.5.8',
     date: '2026-11-11',
     update: 'App files only. ICTU needs the ICT Inventory and PMS app on version 1.8.4 for the screenshot to arrive.',

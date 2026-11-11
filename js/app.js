@@ -20,7 +20,7 @@ const Icons = {
 };
 
 const App = (() => {
-  const VERSION = '1.5.8';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
+  const VERSION = '1.5.9';   // app version, shown on the login box. Keep equal to CACHE_VERSION in sw.js.
   const cfgFile = window.APP_CONFIG;
   const root = () => document.getElementById('app');
   let installPrompt = null;
@@ -31,20 +31,53 @@ const App = (() => {
   async function start() {
     document.title = cfgFile.appName + ' | TRC Dulag';
     window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; const b = document.querySelector('[data-install]'); if (b) b.classList.remove('hidden'); });
-    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      // The app opens from the copy on the device (sw.js). When a new version has just been downloaded, switch to it:
+      // at once if nothing is being typed, otherwise say so.
+      const hadOne = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadOne) return;
+        const busy = document.querySelector('dialog[open], .sigpad') || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+        if (!busy) location.reload();
+        else UI.toast('A new version of the app is ready. It will show the next time you open the app.');
+      });
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
     Api.onEvent(ev => {
-      if (ev === 'session-ended') { endSession(); UI.toast('Your session ended. Please log in again.', true); showLogin(); }
+      if (ev === 'session-ended') { if (!state.user) return; endSession(); UI.toast('Your session ended. Please log in again.', true); showLogin(); }
       if (ev === 'must-change') showChangePassword();
     });
     window.addEventListener('hashchange', route);
     if (!Api.hasToken()) return showLogin();
+    // 1.5.9: open at once with the settings remembered from the last visit, and check them with the server
+    // in the background (the screen's own list loads at the same time). Saves one trip to the server on each open.
+    const saved = savedConfig();
+    if (saved) {
+      state.cfg = saved; state.user = saved.user;
+      startShell();
+      refreshConfig().then(c => {
+        const a = saved.user, b = c.user;
+        if (a.username !== b.username || a.office !== b.office || a.role !== b.role || a.name !== b.name ||
+            JSON.stringify(saved.offices) !== JSON.stringify(c.offices)) startShell();
+      }).catch(e => { if (e.code === 'E-AUTH-07') return; if (/^E-AUTH/.test(e.code) && e.code !== 'E-AUTH-04') { endSession(); showLogin(); } });
+      return;
+    }
     try { await refreshConfig(); startShell(); }
     catch (e) { if (e.code === 'E-AUTH-07') return; if (e.code !== 'E-AUTH-04') UI.error(e); showLogin(); }
+  }
+
+  const CFG_KEY = 'doctrack.config';
+  function savedConfig() {
+    try {
+      const c = JSON.parse(Api.store.get(CFG_KEY) || 'null');
+      return c && c.user && c.roles && c.v === VERSION ? c : null;
+    } catch (e) { return null; }
   }
 
   async function refreshConfig() {
     const c = await Api.call('config');
     state.cfg = c; state.user = c.user;
+    Api.store.set(CFG_KEY, JSON.stringify(Object.assign({}, c, { v: VERSION })));
     return c;
   }
 
@@ -79,7 +112,7 @@ const App = (() => {
         Api.setToken(res.token);
         state.user = res.user;
         if (res.user.mustChange) return showChangePassword(f.password.value);
-        if (res.config) { state.cfg = res.config; state.user = res.config.user; }   // 1.5.2: sent with the login
+        if (res.config) { state.cfg = res.config; state.user = res.config.user; Api.store.set(CFG_KEY, JSON.stringify(Object.assign({}, res.config, { v: VERSION }))); }   // 1.5.2: sent with the login
         else await refreshConfig();
         if (!location.hash || location.hash === '#/' ) location.hash = '#/inbox';
         startShell();
@@ -124,7 +157,7 @@ const App = (() => {
 
   async function logout() {
     try { await Api.call('logout'); } catch (e) { /* signing out anyway */ }
-    Api.setToken(null); state.user = null; state.cfg = null; clearInterval(badgeTimer); Views.forget();
+    Api.setToken(null); state.user = null; state.cfg = null; clearInterval(badgeTimer); Views.forget(); Api.store.set(CFG_KEY, null);
     location.hash = '';
     showLogin();
   }
@@ -162,7 +195,7 @@ const App = (() => {
 
   let badgeTimer = 0;
   // Stops the background count check, so a dead session does not keep redrawing the login screen.
-  function endSession() { clearInterval(badgeTimer); badgeTimer = 0; state.cfg = null; state.user = null; Views.forget(); }
+  function endSession() { clearInterval(badgeTimer); badgeTimer = 0; state.cfg = null; state.user = null; Views.forget(); Api.store.set(CFG_KEY, null); }
   function refreshBadge() {
     if (!state.cfg) return;
     Api.call('inbox').then(r => setBadge(r.docs.filter(d => d.status === 'In Transit').length)).catch(() => {});
