@@ -8,6 +8,14 @@
  */
 window.CHANGELOG = [
   {
+    version: '1.5.8',
+    date: '2026-11-11',
+    update: 'App files only. ICTU needs the ICT Inventory and PMS app on version 1.8.4 for the screenshot to arrive.',
+    changes: [
+      'Contact the ICT Unit can now send a screenshot with your message. On a computer, take a picture of the page, paste one with Ctrl+V, or choose a picture. On a phone, take a screenshot first and then choose it.',
+    ],
+  },
+  {
     version: '1.5.7',
     date: '2026-11-11',
     update: 'App files only. No Apps Script change.',
