@@ -25,6 +25,18 @@ const QR = (() => {
       '<rect width="' + size + '" height="' + size + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
   }
 
+  /** vendor/jsQR.js (250 KB) is loaded only when a QR is read, so the app opens faster. */
+  let jsqrP = null;
+  function load() {
+    if (window.jsQR) return Promise.resolve();
+    if (!jsqrP) jsqrP = new Promise(ok => {
+      const s = document.createElement('script');
+      s.src = 'vendor/jsQR.js'; s.onload = ok; s.onerror = () => { jsqrP = null; ok(); };
+      document.head.appendChild(s);
+    });
+    return jsqrP;
+  }
+
   /** Reads a QR code from ImageData. Returns the text or ''. */
   function decode(imageData) {
     const res = window.jsQR ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' }) : null;
@@ -32,7 +44,8 @@ const QR = (() => {
   }
 
   /** Reads a QR code from a photo file (the "Take a photo" option). */
-  function decodeFile(file) {
+  async function decodeFile(file) {
+    await load();
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -54,7 +67,7 @@ const QR = (() => {
     });
   }
 
-  return { svg, decode, decodeFile, extractTrk };
+  return { svg, decode, decodeFile, extractTrk, load };
 })();
 
 /**
@@ -126,6 +139,7 @@ const Scanner = (() => {
         if ('BarcodeDetector' in window) {
           try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; }
         }
+        QR.load();   // jsQR, used when BarcodeDetector is missing or fails
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let lastTick = 0;
